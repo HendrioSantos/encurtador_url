@@ -1,0 +1,78 @@
+
+services:
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: encurtador-app
+    ports:
+      - "8080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: prod
+
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_NAME: encurtador_url
+      DB_USERNAME: ${DB_USERNAME:?Defina DB_USERNAME}
+      DB_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_TTL: 10m
+      REDIS_CONNECT_TIMEOUT: 5000
+      REDIS_TIMEOUT: 5000
+      REDIS_MONITOR_INTERVAL: 5000
+
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - encurtador-network
+
+  postgres:
+    image: postgres:18
+    container_name: encurtador-postgres
+    environment:
+      POSTGRES_DB: encurtador_url
+      POSTGRES_USER: ${DB_USERNAME:?Defina DB_USERNAME}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?Defina DB_PASSWORD}
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - encurtador-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: encurtador-redis
+    ports:
+      - "6380:6379"
+    volumes:
+      - redis-data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+    restart: unless-stopped
+    networks:
+      - encurtador-network
+
+volumes:
+  postgres-data:
+  redis-data:
+
+networks:
+  encurtador-network:
+    driver: bridge

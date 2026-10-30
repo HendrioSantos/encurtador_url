@@ -1,0 +1,2 @@
+ALTER TABLE url
+ALTER COLUMN codigo_encurtado TYPE VARCHAR(12);
